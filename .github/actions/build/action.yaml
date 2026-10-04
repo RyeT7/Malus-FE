@@ -1,0 +1,26 @@
+name: build
+description: Build node modules
+
+inputs:
+  project-path:
+    required: true
+  node-version:
+    required: true
+
+runs:
+  using: composite
+
+  steps:
+    - uses: pnpm/action-setup@v6
+      with:
+        package_json_file: ${{ inputs.project-path }}/package.json
+
+    - uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+        cache-dependency-path: ${{ inputs.project-path }}/pnpm-lock.yaml
+
+    - shell: bash
+      working-directory: ${{ inputs.project-path }}
+      run: pnpm install --frozen-lockfile

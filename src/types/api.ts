@@ -30,6 +30,13 @@ export type Question = {
   answeredAt?: string
 }
 
+export type Me = {
+  subject: string
+  name?: string
+  roles: string[]
+  admin: boolean
+}
+
 export type List<T> = {
   items: T[]
 }

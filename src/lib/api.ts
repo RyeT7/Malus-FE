@@ -1,4 +1,5 @@
-import type { List, Presentation, ProblemDetails, Question } from '../types/api'
+import type { List, Me, Presentation, ProblemDetails, Question } from '../types/api'
+import { getAccessToken } from './auth'
 
 const baseUrl = (import.meta.env.VITE_BACKEND_URL ?? '').replace(/\/+$/, '')
 
@@ -12,11 +13,19 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+type RequestOptions = RequestInit & { auth?: boolean }
+
+async function request<T>(path: string, { auth = false, ...init }: RequestOptions = {}): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   if (init.body !== undefined) {
     headers.set('Content-Type', 'application/json')
+  }
+  if (auth) {
+    const token = await getAccessToken()
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
   }
 
   let response: Response
@@ -41,6 +50,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   return (await response.json()) as T
+}
+
+export function getMe(signal?: AbortSignal): Promise<Me> {
+  return request<Me>('/v1/me', { signal, auth: true })
 }
 
 export function getPresentation(signal?: AbortSignal): Promise<Presentation> {

@@ -1,3 +1,4 @@
+import { AdminSession } from './components/AdminSession'
 import { Questions } from './components/Questions'
 import { Section } from './components/Section'
 import { outline, outlineTarget, sectionAnchor } from './lib/sections'
@@ -73,6 +74,8 @@ function App() {
       <div className="mt-20">
         <Questions />
       </div>
+
+      <AdminSession />
     </main>
   )
 }

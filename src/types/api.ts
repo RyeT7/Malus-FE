@@ -22,6 +22,29 @@ export type PresentationSection = {
   publishedAt: string
 }
 
+export type SectionContent = {
+  title: string
+  body: string
+  items: SectionItem[]
+}
+
+export type SectionVersion = {
+  number: number
+  content: SectionContent
+  publishedAt: string
+}
+
+export type AdminSection = {
+  id: string
+  kind: SectionKind
+  draft: SectionContent
+  published?: SectionVersion
+  hasUnpublishedChanges: boolean
+  revision: number
+  createdAt: string
+  updatedAt: string
+}
+
 export type Presentation = {
   sections: PresentationSection[]
 }

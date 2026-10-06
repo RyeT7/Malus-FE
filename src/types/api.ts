@@ -7,10 +7,17 @@ export type SectionKind =
   | 'proposed_changes'
   | 'why_me'
 
+export type SectionItem = {
+  heading: string
+  detail: string
+  semester?: number
+}
+
 export type PresentationSection = {
   kind: SectionKind
   title: string
   body: string
+  items?: SectionItem[]
   version: number
   publishedAt: string
 }

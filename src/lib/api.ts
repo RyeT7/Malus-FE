@@ -1,4 +1,14 @@
-import type { List, Me, Presentation, ProblemDetails, Question } from '../types/api'
+import type {
+  AdminSection,
+  List,
+  Me,
+  Presentation,
+  ProblemDetails,
+  Question,
+  SectionContent,
+  SectionKind,
+  SectionVersion,
+} from '../types/api'
 import { getAccessToken } from './auth'
 
 const baseUrl = (import.meta.env.VITE_BACKEND_URL ?? '').replace(/\/+$/, '')
@@ -76,5 +86,57 @@ export function upvoteQuestion(id: string, viewerId: string): Promise<Question> 
   return request<Question>(`/v1/questions/${encodeURIComponent(id)}/upvotes`, {
     method: 'POST',
     headers: { 'X-Viewer-ID': viewerId },
+  })
+}
+
+function ifMatch(revision: number): HeadersInit {
+  return { 'If-Match': `"${revision}"` }
+}
+
+function sectionPath(id: string): string {
+  return `/v1/sections/${encodeURIComponent(id)}`
+}
+
+export async function listSections(signal?: AbortSignal): Promise<AdminSection[]> {
+  const list = await request<List<AdminSection>>('/v1/sections', { signal, auth: true })
+  return list.items
+}
+
+export function createSection(kind: SectionKind, content: SectionContent): Promise<AdminSection> {
+  return request<AdminSection>('/v1/sections', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ kind, ...content }),
+  })
+}
+
+export function saveDraft(id: string, revision: number, content: SectionContent): Promise<AdminSection> {
+  return request<AdminSection>(`${sectionPath(id)}/draft`, {
+    method: 'PUT',
+    auth: true,
+    headers: ifMatch(revision),
+    body: JSON.stringify(content),
+  })
+}
+
+export function publishSection(id: string, revision: number): Promise<AdminSection> {
+  return request<AdminSection>(`${sectionPath(id)}/publish`, {
+    method: 'POST',
+    auth: true,
+    headers: ifMatch(revision),
+  })
+}
+
+export async function listVersions(id: string, signal?: AbortSignal): Promise<SectionVersion[]> {
+  const list = await request<List<SectionVersion>>(`${sectionPath(id)}/versions`, { signal, auth: true })
+  return list.items
+}
+
+export function rollbackSection(id: string, version: number, revision: number): Promise<AdminSection> {
+  return request<AdminSection>(`${sectionPath(id)}/rollback`, {
+    method: 'POST',
+    auth: true,
+    headers: ifMatch(revision),
+    body: JSON.stringify({ version }),
   })
 }

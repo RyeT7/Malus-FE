@@ -7,7 +7,9 @@ import type {
   Question,
   SectionContent,
   SectionKind,
+  SectionAttachment,
   SectionVersion,
+  UploadTicket,
 } from '../types/api'
 import { getAccessToken } from './auth'
 
@@ -102,11 +104,25 @@ export async function listSections(signal?: AbortSignal): Promise<AdminSection[]
   return list.items
 }
 
+function contentPayload(content: SectionContent) {
+  return {
+    title: content.title,
+    body: content.body,
+    items: content.items.map((item) => ({
+      heading: item.heading,
+      detail: item.detail,
+      semester: item.semester ?? 0,
+      sources: item.sources ?? [],
+      attachments: (item.attachments ?? []).map((a) => a.id),
+    })),
+  }
+}
+
 export function createSection(kind: SectionKind, content: SectionContent): Promise<AdminSection> {
   return request<AdminSection>('/v1/sections', {
     method: 'POST',
     auth: true,
-    body: JSON.stringify({ kind, ...content }),
+    body: JSON.stringify({ kind, ...contentPayload(content) }),
   })
 }
 
@@ -115,7 +131,7 @@ export function saveDraft(id: string, revision: number, content: SectionContent)
     method: 'PUT',
     auth: true,
     headers: ifMatch(revision),
-    body: JSON.stringify(content),
+    body: JSON.stringify(contentPayload(content)),
   })
 }
 
@@ -138,5 +154,40 @@ export function rollbackSection(id: string, version: number, revision: number): 
     auth: true,
     headers: ifMatch(revision),
     body: JSON.stringify({ version }),
+  })
+}
+
+export const maxAttachmentBytes = 10 * 1024 * 1024
+export const attachmentTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp']
+
+export function attachmentHref(id: string): string {
+  return `${baseUrl}/v1/attachments/${encodeURIComponent(id)}/content`
+}
+
+export async function attachmentLink(id: string): Promise<string> {
+  const result = await request<{ url: string }>(`/v1/attachments/${encodeURIComponent(id)}/content`, { auth: true })
+  return result.url
+}
+
+export async function uploadAttachment(file: File): Promise<SectionAttachment> {
+  const ticket = await request<UploadTicket>('/v1/attachments', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ fileName: file.name, contentType: file.type, size: file.size }),
+  })
+
+  let response: Response
+  try {
+    response = await fetch(ticket.uploadUrl, { method: 'PUT', headers: ticket.headers, body: file })
+  } catch {
+    throw new ApiError(0, 'Could not reach file storage. Check your connection and try again.')
+  }
+  if (!response.ok) {
+    throw new ApiError(response.status, `File storage rejected the upload (${response.status}).`)
+  }
+
+  return request<SectionAttachment>(`/v1/attachments/${encodeURIComponent(ticket.attachment.id)}/complete`, {
+    method: 'POST',
+    auth: true,
   })
 }

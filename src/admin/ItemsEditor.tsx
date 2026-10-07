@@ -1,4 +1,5 @@
 import type { SectionItem } from '../types/api'
+import { AttachmentsEditor, SourcesEditor } from './ItemExtras'
 import { maxSemester } from './kinds'
 
 type Props = {
@@ -88,6 +89,13 @@ export function ItemsEditor({ idPrefix, items, itemLabel, withSemester, onChange
                     </select>
                   </>
                 )}
+                <SourcesEditor id={id} itemName={name} sources={item.sources ?? []} onChange={(sources) => update(i, { sources })} />
+                <AttachmentsEditor
+                  id={id}
+                  itemName={name}
+                  attachments={item.attachments ?? []}
+                  onChange={(attachments) => update(i, { attachments })}
+                />
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${name} up`} className={smallButton}>
                     Move up

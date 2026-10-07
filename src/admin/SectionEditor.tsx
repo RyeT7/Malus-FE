@@ -20,7 +20,13 @@ function normalize(content: SectionContent): string {
   return JSON.stringify({
     title: content.title,
     body: content.body,
-    items: content.items.map((item) => ({ heading: item.heading, detail: item.detail, semester: item.semester || 0 })),
+    items: content.items.map((item) => ({
+      heading: item.heading,
+      detail: item.detail,
+      semester: item.semester || 0,
+      sources: (item.sources ?? []).map((s) => [s.label, s.url]),
+      attachments: (item.attachments ?? []).map((a) => a.id),
+    })),
   })
 }
 

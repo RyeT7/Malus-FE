@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export type View = { mode: 'reading' } | { mode: 'slides'; slide: number }
+export type View = { mode: 'reading' } | { mode: 'slides'; slide: number; presenting: boolean }
 
 const historyKey = 'malusSlides'
 
@@ -10,7 +10,7 @@ function readView(): View {
     return { mode: 'reading' }
   }
   const n = Number(params.get('slide'))
-  return { mode: 'slides', slide: Number.isInteger(n) && n >= 1 ? n - 1 : 0 }
+  return { mode: 'slides', slide: Number.isInteger(n) && n >= 1 ? n - 1 : 0, presenting: params.get('present') === '1' }
 }
 
 function slidesUrl(slide: number): string {
@@ -25,6 +25,7 @@ function readingUrl(): string {
   const url = new URL(window.location.href)
   url.searchParams.delete('view')
   url.searchParams.delete('slide')
+  url.searchParams.delete('present')
   return url.toString()
 }
 
@@ -39,12 +40,12 @@ export function useView() {
 
   const present = useCallback((slide = 0) => {
     window.history.pushState({ [historyKey]: true }, '', slidesUrl(slide))
-    setView({ mode: 'slides', slide })
+    setView({ mode: 'slides', slide, presenting: false })
   }, [])
 
   const goTo = useCallback((slide: number) => {
     window.history.replaceState(window.history.state, '', slidesUrl(slide))
-    setView({ mode: 'slides', slide })
+    setView((prev) => ({ mode: 'slides', slide, presenting: prev.mode === 'slides' && prev.presenting }))
   }, [])
 
   const exit = useCallback(() => {

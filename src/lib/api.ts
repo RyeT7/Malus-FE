@@ -1,6 +1,8 @@
 import type {
   AdminSection,
   List,
+  LiveConnection,
+  LiveSession,
   Me,
   Presentation,
   ProblemDetails,
@@ -194,4 +196,39 @@ export async function uploadAttachment(file: File): Promise<SectionAttachment> {
     method: 'POST',
     auth: true,
   })
+}
+
+export async function getLiveSession(signal?: AbortSignal): Promise<LiveSession | null> {
+  try {
+    return await request<LiveSession>('/v1/live/session', { signal })
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return null
+    }
+    throw err
+  }
+}
+
+export function getLiveConnection(signal?: AbortSignal): Promise<LiveConnection> {
+  return request<LiveConnection>('/v1/live/connection', { signal })
+}
+
+export function liveStreamHref(url: string): string {
+  return /^[a-z]+:\/\//i.test(url) ? url : baseUrl + url
+}
+
+function sessionPathOf(id: string): string {
+  return `/v1/sessions/${encodeURIComponent(id)}`
+}
+
+export function startLiveSession(slideCount: number): Promise<LiveSession> {
+  return request<LiveSession>('/v1/sessions', { method: 'POST', auth: true, body: JSON.stringify({ slideCount }) })
+}
+
+export function setLiveSlide(id: string, slide: number): Promise<LiveSession> {
+  return request<LiveSession>(`${sessionPathOf(id)}/slide`, { method: 'PUT', auth: true, body: JSON.stringify({ slide }) })
+}
+
+export function endLiveSession(id: string): Promise<LiveSession> {
+  return request<LiveSession>(`${sessionPathOf(id)}/end`, { method: 'POST', auth: true })
 }

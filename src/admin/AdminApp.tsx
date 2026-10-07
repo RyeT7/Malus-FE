@@ -4,11 +4,16 @@ import { authEnabled, signIn, signOut } from '../lib/auth'
 import { useSession } from '../lib/useSession'
 import type { AdminSection, SectionKind } from '../types/api'
 import { kindInfo, kinds } from './kinds'
+import { PresentPanel } from './PresentPanel'
 import { QuestionsPanel } from './QuestionsPanel'
 import { SectionEditor } from './SectionEditor'
 import { VersionHistory } from './VersionHistory'
 
-type View = SectionKind | 'questions'
+type View = SectionKind | 'questions' | 'present'
+
+function initialView(): View {
+  return window.location.hash === '#present' ? 'present' : kinds[0].kind
+}
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; sections: AdminSection[] }
 
@@ -27,7 +32,7 @@ function sectionStatus(section: AdminSection | undefined): string {
 function Editor() {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
-  const [selected, setSelected] = useState<View>(kinds[0].kind)
+  const [selected, setSelected] = useState<View>(initialView)
   const [notice, setNotice] = useState('')
   const [dirty, setDirty] = useState(false)
 
@@ -71,26 +76,13 @@ function Editor() {
     setSelected(kind)
   }
 
-  if (load.status === 'loading') {
-    return <p className="mt-10">Loading sections…</p>
-  }
-  if (load.status === 'error') {
-    return (
-      <div role="alert" className="mt-10">
-        <p>Could not load sections: {load.message}</p>
-        <button type="button" onClick={reload} className={`${linkButton} mt-2`}>
-          Try again
-        </button>
-      </div>
-    )
-  }
-
-  const byKind = new Map(load.sections.map((s) => [s.kind, s]))
-  const info = selected === 'questions' ? null : kindInfo(selected)
-  const section = selected === 'questions' ? undefined : byKind.get(selected)
+  const byKind = new Map(load.status === 'ready' ? load.sections.map((s) => [s.kind, s]) : [])
+  const info = selected === 'questions' || selected === 'present' ? null : kindInfo(selected)
+  const section = selected === 'questions' || selected === 'present' ? undefined : byKind.get(selected)
+  const editing = info !== null && load.status === 'ready'
 
   return (
-    <div className="mt-10 md:grid md:grid-cols-[15rem_1fr] md:gap-12">
+    <div className="mt-10 flex flex-col md:grid md:grid-cols-[15rem_1fr] md:gap-12">
       <nav aria-label="Sections" className="mb-10 md:mb-0">
         <ul className="border-t border-mist">
           {kinds.map((k) => (
@@ -102,12 +94,23 @@ function Editor() {
                 className="block w-full cursor-pointer py-3 text-left hover:underline aria-[current]:font-semibold"
               >
                 <span className="block">{k.label}</span>
-                <span className="block text-sm font-normal">{sectionStatus(byKind.get(k.kind))}</span>
+                <span className="block text-sm font-normal">{load.status === 'ready' ? sectionStatus(byKind.get(k.kind)) : load.status === 'loading' ? 'Loading…' : 'Not loaded'}</span>
               </button>
             </li>
           ))}
         </ul>
         <ul className="mt-8 border-t border-mist">
+          <li className="border-b border-mist">
+            <button
+              type="button"
+              onClick={() => select('present')}
+              aria-current={selected === 'present' ? 'true' : undefined}
+              className="block w-full cursor-pointer py-3 text-left hover:underline aria-[current]:font-semibold"
+            >
+              <span className="block">Present</span>
+              <span className="block text-sm font-normal">Run the live session and control slides</span>
+            </button>
+          </li>
           <li className="border-b border-mist">
             <button
               type="button"
@@ -122,13 +125,22 @@ function Editor() {
         </ul>
       </nav>
 
-      <div className="min-w-0">
+      <div className={selected === 'present' ? 'order-first mb-10 min-w-0 md:order-none md:mb-0' : 'min-w-0'}>
         <p role="status" aria-live="polite" className="mb-4 min-h-[1lh] text-sm font-semibold">
           {notice}
         </p>
-        {info === null ? (
-          <QuestionsPanel />
-        ) : (
+        {selected === 'present' && <PresentPanel />}
+        {selected === 'questions' && <QuestionsPanel />}
+        {info !== null && load.status === 'loading' && <p>Loading sections…</p>}
+        {info !== null && load.status === 'error' && (
+          <div role="alert">
+            <p>Could not load sections: {load.message}</p>
+            <button type="button" onClick={reload} className={`${linkButton} mt-2`}>
+              Try again
+            </button>
+          </div>
+        )}
+        {editing && (
           <SectionEditor
             key={`${selected}:${section?.id ?? 'new'}:${section?.revision ?? 0}`}
             info={info}

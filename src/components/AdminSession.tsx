@@ -34,7 +34,16 @@ export function AdminSession() {
     content = (
       <p>
         Signed in as {me.name ?? me.subject}.{' '}
-        {me.admin ? 'You can edit this presentation.' : 'This account is not an admin for this presentation.'}{' '}
+        {me.admin ? (
+          <>
+            <a href="/admin.html" className="text-paper">
+              Edit presentation
+            </a>
+            .
+          </>
+        ) : (
+          'This account is not an admin for this presentation.'
+        )}{' '}
         {authEnabled ? (
           <button type="button" onClick={() => void run(signOut)} disabled={busy} className={linkButton}>
             Sign out

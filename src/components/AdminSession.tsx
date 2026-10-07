@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { authEnabled, signIn, signOut } from '../lib/auth'
 import { useSession } from '../lib/useSession'
 
-const linkButton = 'cursor-pointer underline decoration-wash underline-offset-[0.2em] hover:decoration-2 disabled:cursor-wait'
+const linkButton = 'cursor-pointer underline decoration-mist underline-offset-[0.2em] hover:decoration-2 disabled:cursor-wait'
 
 export function AdminSession() {
   const session = useSession()
@@ -49,7 +49,7 @@ export function AdminSession() {
   }
 
   return (
-    <footer className="mt-24 border-t border-mist pt-6 text-sm">
+    <footer className="mt-28 border-t border-mist/25 pt-8 text-sm text-mist md:pl-[16rem]">
       {content}
       {error && (
         <p role="alert" className="mt-2 font-semibold">

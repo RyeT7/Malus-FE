@@ -1,5 +1,7 @@
 import type { PresentationSection, SectionItem } from '../types/api'
 import { sectionAnchor } from '../lib/sections'
+import { Reveal } from './Reveal'
+import { Scene } from './Scene'
 
 function paragraphs(text: string): string[] {
   return text
@@ -18,12 +20,14 @@ function Paragraphs({ text }: { text: string }) {
 
 function Facts({ items }: { items: SectionItem[] }) {
   return (
-    <dl className="border-t border-mist">
+    <dl className="border-t border-mist/20">
       {items.map((item, i) => (
-        <div key={i} className="border-b border-mist py-3 sm:grid sm:grid-cols-[minmax(0,12rem)_1fr] sm:gap-6">
-          <dt className="font-semibold">{item.heading}</dt>
-          <dd className="whitespace-pre-line">{item.detail}</dd>
-        </div>
+        <Reveal key={i} delay={i * 60}>
+          <div className="border-b border-mist/20 py-4 sm:grid sm:grid-cols-[minmax(0,11rem)_1fr] sm:gap-8">
+            <dt className="text-sm tracking-wide text-mist uppercase">{item.heading}</dt>
+            <dd className="mt-1 whitespace-pre-line sm:mt-0">{item.detail}</dd>
+          </div>
+        </Reveal>
       ))}
     </dl>
   )
@@ -32,15 +36,17 @@ function Facts({ items }: { items: SectionItem[] }) {
 function ItemList({ items, headingLevel }: { items: SectionItem[]; headingLevel: 'h3' | 'h4' }) {
   const Heading = headingLevel
   return (
-    <ol className="border-t border-mist">
+    <ol className="border-t border-mist/20">
       {items.map((item, i) => (
-        <li key={i} className="border-b border-mist py-5">
-          <Heading className="font-display text-[1.375rem] leading-[1.25]">{item.heading}</Heading>
-          {item.detail && (
-            <div className="mt-2 space-y-3">
-              <Paragraphs text={item.detail} />
-            </div>
-          )}
+        <li key={i} className="border-b border-mist/20">
+          <Reveal delay={i * 60} className="py-6">
+            <Heading className="font-sans text-lg leading-snug font-medium tracking-normal text-paper sm:text-xl">{item.heading}</Heading>
+            {item.detail && (
+              <div className="mt-3 space-y-3 text-mist">
+                <Paragraphs text={item.detail} />
+              </div>
+            )}
+          </Reveal>
         </li>
       ))}
     </ol>
@@ -55,10 +61,14 @@ function Semesters({ items }: { items: SectionItem[] }) {
   }
   const semesters = [...bySemester.keys()].sort((a, b) => a - b)
   return (
-    <div className="space-y-10">
+    <div className="space-y-14">
       {semesters.map((semester) => (
         <div key={semester}>
-          <h3 className="mb-3 text-[1.625rem]">{semester > 0 ? `Semester ${semester}` : 'Unscheduled'}</h3>
+          <Reveal>
+            <h3 className="mb-4 text-[clamp(1.75rem,3.2vw,2.25rem)] italic">
+              {semester > 0 ? `Semester ${semester}` : 'Unscheduled'}
+            </h3>
+          </Reveal>
           <ItemList items={bySemester.get(semester) ?? []} headingLevel="h4" />
         </div>
       ))}
@@ -72,7 +82,7 @@ function Items({ section }: { section: PresentationSection }) {
     return null
   }
   return (
-    <div className="mt-8 max-w-150">
+    <div className="mt-10">
       {section.kind === 'biodata' ? (
         <Facts items={items} />
       ) : section.kind === 'workplan' ? (
@@ -87,16 +97,23 @@ function Items({ section }: { section: PresentationSection }) {
 export function Section({ section }: { section: PresentationSection }) {
   const id = sectionAnchor(section)
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-8 border-t border-mist pt-10">
-      <h2 id={`${id}-title`} className="text-[clamp(1.75rem,4vw,2.5rem)]">
-        {section.title}
-      </h2>
-      {section.body.trim() !== '' && (
-        <div className="mt-6 max-w-150 space-y-4">
-          <Paragraphs text={section.body} />
+    <Scene as="section" id={id} labelledBy={`${id}-title`}>
+      <Reveal>
+        <h2 id={`${id}-title`} className="scene-title text-[clamp(2.75rem,8vw,5.5rem)]">
+          {section.title}
+        </h2>
+        <span aria-hidden="true" className="mt-6 block h-px w-16 bg-wash" />
+      </Reveal>
+      <div className="mt-10 md:pl-[16rem]">
+        {section.body.trim() !== '' && (
+          <Reveal className="max-w-150 space-y-4 text-lg text-mist">
+            <Paragraphs text={section.body} />
+          </Reveal>
+        )}
+        <div className="max-w-150">
+          <Items section={section} />
         </div>
-      )}
-      <Items section={section} />
-    </section>
+      </div>
+    </Scene>
   )
 }

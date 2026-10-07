@@ -7,10 +7,33 @@ export type SectionKind =
   | 'proposed_changes'
   | 'why_me'
 
+export type SectionSource = {
+  label: string
+  url: string
+}
+
+export type SectionAttachment = {
+  id: string
+  fileName: string
+  contentType: string
+  size: number
+  ready: boolean
+  createdAt: string
+}
+
 export type SectionItem = {
   heading: string
   detail: string
   semester?: number
+  sources?: SectionSource[]
+  attachments?: SectionAttachment[]
+}
+
+export type UploadTicket = {
+  attachment: SectionAttachment
+  uploadUrl: string
+  headers: Record<string, string>
+  expiresAt: string
 }
 
 export type PresentationSection = {

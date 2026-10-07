@@ -1,5 +1,6 @@
 import type { PresentationSection, SectionItem } from '../types/api'
 import { sectionAnchor } from '../lib/sections'
+import { ItemReferences } from './ItemReferences'
 import { Reveal } from './Reveal'
 import { Scene } from './Scene'
 
@@ -25,7 +26,10 @@ function Facts({ items }: { items: SectionItem[] }) {
         <Reveal key={i} delay={i * 60}>
           <div className="border-b border-mist/20 py-4 sm:grid sm:grid-cols-[minmax(0,11rem)_1fr] sm:gap-8">
             <dt className="text-sm tracking-wide text-mist uppercase">{item.heading}</dt>
-            <dd className="mt-1 whitespace-pre-line sm:mt-0">{item.detail}</dd>
+            <dd className="mt-1 sm:mt-0">
+              <span className="whitespace-pre-line">{item.detail}</span>
+              <ItemReferences item={item} />
+            </dd>
           </div>
         </Reveal>
       ))}
@@ -46,6 +50,7 @@ function ItemList({ items, headingLevel }: { items: SectionItem[]; headingLevel:
                 <Paragraphs text={item.detail} />
               </div>
             )}
+            <ItemReferences item={item} />
           </Reveal>
         </li>
       ))}

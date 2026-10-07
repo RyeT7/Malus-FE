@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listQuestions } from '../lib/api'
 import { headline } from '../lib/headline'
+import { ItemReferences } from '../components/ItemReferences'
 import type { Question } from '../types/api'
 import { paragraphsOf, type Slide } from './buildSlides'
 
@@ -124,7 +125,10 @@ export function SlideView({ slide, onJump }: { slide: Slide; onJump: (index: num
             {slide.items.map((item, i) => (
               <div key={i} className="border-b border-mist/20 py-5 sm:grid sm:grid-cols-[minmax(0,16rem)_1fr] sm:gap-10">
                 <dt className="text-base tracking-wide text-mist uppercase">{item.heading}</dt>
-                <dd className="mt-1 text-[clamp(1.3rem,2.4vw,2rem)] whitespace-pre-line text-paper sm:mt-0">{item.detail}</dd>
+                <dd className="mt-1 sm:mt-0">
+                  <span className="text-[clamp(1.3rem,2.4vw,2rem)] whitespace-pre-line text-paper">{item.detail}</span>
+                  <ItemReferences item={item} size="lg" />
+                </dd>
               </div>
             ))}
           </dl>
@@ -154,6 +158,7 @@ export function SlideView({ slide, onJump }: { slide: Slide; onJump: (index: num
                       ))}
                     </div>
                   )}
+                  {item.part === 0 && <ItemReferences item={item} size="lg" />}
                 </div>
               </li>
             ))}

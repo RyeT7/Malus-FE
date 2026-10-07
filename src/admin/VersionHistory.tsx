@@ -115,6 +115,12 @@ export function VersionHistory({ section, blocked, onRestored, onConflict }: Pro
                           {item.semester ? `Semester ${item.semester}: ` : ''}
                           <span className="font-semibold">{item.heading}</span>
                           {item.detail && ` — ${item.detail}`}
+                          {(item.sources ?? []).length > 0 && (
+                            <span className="block text-xs">Sources: {(item.sources ?? []).map((s) => s.label || s.url).join(', ')}</span>
+                          )}
+                          {(item.attachments ?? []).length > 0 && (
+                            <span className="block text-xs">Files: {(item.attachments ?? []).map((f) => f.fileName).join(', ')}</span>
+                          )}
                         </li>
                       ))}
                     </ol>

@@ -77,6 +77,10 @@ export async function listQuestions(signal?: AbortSignal): Promise<Question[]> {
   return list.items
 }
 
+export function answerQuestion(id: string): Promise<Question> {
+  return request<Question>(`/v1/questions/${encodeURIComponent(id)}/answer`, { method: 'POST', auth: true })
+}
+
 export function askQuestion(text: string, author: string): Promise<Question> {
   return request<Question>('/v1/questions', {
     method: 'POST',

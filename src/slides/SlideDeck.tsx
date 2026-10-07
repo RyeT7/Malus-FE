@@ -45,7 +45,7 @@ export function SlideDeck({ slides, index, onIndexChange, onExit }: Props) {
   }, [])
 
   useEffect(() => {
-    const sync = () => setFullscreen(document.fullscreenElement === deck.current)
+    const sync = () => setFullscreen(document.fullscreenElement !== null)
     document.addEventListener('fullscreenchange', sync)
     return () => document.removeEventListener('fullscreenchange', sync)
   }, [])
@@ -54,7 +54,7 @@ export function SlideDeck({ slides, index, onIndexChange, onExit }: Props) {
     if (document.fullscreenElement) {
       void document.exitFullscreen()
     } else {
-      void deck.current?.requestFullscreen?.()
+      void document.documentElement.requestFullscreen?.()
     }
   }, [])
 

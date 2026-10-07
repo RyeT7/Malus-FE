@@ -6,8 +6,10 @@ import { Section } from './components/Section'
 import { Stage } from './components/Stage'
 import { StageLights } from './components/StageLights'
 import { usePresentation } from './lib/usePresentation'
+import { useView } from './lib/useView'
+import { SlideMode } from './slides/SlideMode'
 
-function App() {
+function ReadingPage({ onPresent }: { onPresent: () => void }) {
   const { state, retry } = usePresentation()
   const sections = state.status === 'ready' ? state.sections : []
 
@@ -21,6 +23,21 @@ function App() {
         <main>
           <Scene>
             <Programme sections={sections} />
+
+            {state.status === 'ready' && state.sections.length > 0 && (
+              <p className="mt-10 md:pl-[16rem]">
+                <a
+                  href="?view=slides"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onPresent()
+                  }}
+                  className="text-mist hover:text-paper"
+                >
+                  View as slides
+                </a>
+              </p>
+            )}
 
             {state.status === 'loading' && (
               <p role="status" className="mt-12 text-mist md:pl-[16rem]">
@@ -60,6 +77,20 @@ function App() {
       </div>
     </>
   )
+}
+
+function App() {
+  const { view, present, goTo, exit } = useView()
+
+  if (view.mode === 'slides') {
+    return (
+      <>
+        <StageLights />
+        <SlideMode slide={view.slide} onSlideChange={goTo} onExit={exit} />
+      </>
+    )
+  }
+  return <ReadingPage onPresent={() => present(0)} />
 }
 
 export default App

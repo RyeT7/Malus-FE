@@ -4,8 +4,11 @@ import { authEnabled, signIn, signOut } from '../lib/auth'
 import { useSession } from '../lib/useSession'
 import type { AdminSection, SectionKind } from '../types/api'
 import { kindInfo, kinds } from './kinds'
+import { QuestionsPanel } from './QuestionsPanel'
 import { SectionEditor } from './SectionEditor'
 import { VersionHistory } from './VersionHistory'
+
+type View = SectionKind | 'questions'
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; sections: AdminSection[] }
 
@@ -24,7 +27,7 @@ function sectionStatus(section: AdminSection | undefined): string {
 function Editor() {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
-  const [selected, setSelected] = useState<SectionKind>(kinds[0].kind)
+  const [selected, setSelected] = useState<View>(kinds[0].kind)
   const [notice, setNotice] = useState('')
   const [dirty, setDirty] = useState(false)
 
@@ -56,7 +59,7 @@ function Editor() {
     )
   }, [])
 
-  function select(kind: SectionKind) {
+  function select(kind: View) {
     if (kind === selected) {
       return
     }
@@ -83,8 +86,8 @@ function Editor() {
   }
 
   const byKind = new Map(load.sections.map((s) => [s.kind, s]))
-  const info = kindInfo(selected)
-  const section = byKind.get(selected)
+  const info = selected === 'questions' ? null : kindInfo(selected)
+  const section = selected === 'questions' ? undefined : byKind.get(selected)
 
   return (
     <div className="mt-10 md:grid md:grid-cols-[15rem_1fr] md:gap-12">
@@ -104,20 +107,37 @@ function Editor() {
             </li>
           ))}
         </ul>
+        <ul className="mt-8 border-t border-mist">
+          <li className="border-b border-mist">
+            <button
+              type="button"
+              onClick={() => select('questions')}
+              aria-current={selected === 'questions' ? 'true' : undefined}
+              className="block w-full cursor-pointer py-3 text-left hover:underline aria-[current]:font-semibold"
+            >
+              <span className="block">Questions</span>
+              <span className="block text-sm font-normal">Mark audience questions answered</span>
+            </button>
+          </li>
+        </ul>
       </nav>
 
       <div className="min-w-0">
         <p role="status" aria-live="polite" className="mb-4 min-h-[1lh] text-sm font-semibold">
           {notice}
         </p>
-        <SectionEditor
-          key={`${selected}:${section?.id ?? 'new'}:${section?.revision ?? 0}`}
-          info={info}
-          section={section}
-          onSaved={saved}
-          onReload={reload}
-          onDirtyChange={setDirty}
-        />
+        {info === null ? (
+          <QuestionsPanel />
+        ) : (
+          <SectionEditor
+            key={`${selected}:${section?.id ?? 'new'}:${section?.revision ?? 0}`}
+            info={info}
+            section={section}
+            onSaved={saved}
+            onReload={reload}
+            onDirtyChange={setDirty}
+          />
+        )}
         {section && (
           <VersionHistory
             key={`${section.id}:${section.revision}`}

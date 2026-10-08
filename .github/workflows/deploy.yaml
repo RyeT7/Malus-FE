@@ -61,3 +61,12 @@ jobs:
           app_location: dist
           skip_app_build: true
           skip_api_build: true
+
+      - name: Smoke test
+        env:
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        run: |
+          for path in / /admin.html /redirect.html; do
+            echo "GET $FRONTEND_URL$path"
+            curl -fsS --retry 20 --retry-delay 10 --retry-all-errors --max-time 30 "${FRONTEND_URL%/}$path" > /dev/null
+          done

@@ -26,9 +26,17 @@ async function start(): Promise<PublicClientApplication> {
   })
   await app.initialize()
   const result = await app.handleRedirectPromise()
-  app.setActiveAccount(result?.account ?? app.getActiveAccount() ?? app.getAllAccounts()[0] ?? null)
+  const fromThisTenant = (account: AccountInfo | null | undefined) => (account?.tenantId === tenantId ? account : null)
+  app.setActiveAccount(
+    fromThisTenant(result?.account) ??
+      fromThisTenant(app.getActiveAccount()) ??
+      app.getAllAccounts().find((account) => account.tenantId === tenantId) ??
+      null,
+  )
   return app
 }
+
+let redirecting: Promise<void> | undefined
 
 export async function getAccount(): Promise<AccountInfo | null> {
   if (!authEnabled) {
@@ -60,7 +68,8 @@ export async function getAccessToken(): Promise<string | undefined> {
     return result.accessToken
   } catch (err) {
     if (err instanceof InteractionRequiredAuthError) {
-      await app.acquireTokenRedirect({ scopes: [apiScope], account })
+      redirecting ??= app.acquireTokenRedirect({ scopes: [apiScope], account })
+      await redirecting
     }
     throw err
   }

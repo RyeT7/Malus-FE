@@ -1,11 +1,10 @@
 import type { SectionItem } from '../types/api'
 import { AttachmentsEditor, SourcesEditor } from './ItemExtras'
-import { maxSemester } from './kinds'
+import { maxSemester } from './layouts'
 
 type Props = {
   idPrefix: string
   items: SectionItem[]
-  itemLabel: string
   withSemester: boolean
   onChange: (items: SectionItem[]) => void
 }
@@ -13,7 +12,7 @@ type Props = {
 const smallButton =
   'cursor-pointer border border-mist px-3 py-1 text-sm hover:border-ink disabled:cursor-default disabled:opacity-50 disabled:hover:border-mist'
 
-export function ItemsEditor({ idPrefix, items, itemLabel, withSemester, onChange }: Props) {
+export function ItemsEditor({ idPrefix, items, withSemester, onChange }: Props) {
   function update(index: number, patch: Partial<SectionItem>) {
     onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }
@@ -42,7 +41,7 @@ export function ItemsEditor({ idPrefix, items, itemLabel, withSemester, onChange
       <ol className="space-y-6">
         {items.map((item, i) => {
           const id = `${idPrefix}-item-${i}`
-          const name = `${itemLabel} ${i + 1}`
+          const name = `Item ${i + 1}`
           return (
             <li key={i}>
               <fieldset className="border-l-2 border-mist pl-4">
@@ -119,7 +118,7 @@ export function ItemsEditor({ idPrefix, items, itemLabel, withSemester, onChange
         })}
       </ol>
       <button type="button" onClick={add} className={`${smallButton} mt-6`}>
-        Add {itemLabel.toLowerCase()}
+        Add item
       </button>
     </div>
   )

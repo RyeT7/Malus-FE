@@ -1,5 +1,4 @@
 import type { PresentationSection, SectionItem } from '../types/api'
-import { sectionAnchor } from '../lib/sections'
 import { ItemReferences } from './ItemReferences'
 import { Reveal } from './Reveal'
 import { Scene } from './Scene'
@@ -88,19 +87,15 @@ function Items({ section }: { section: PresentationSection }) {
   }
   return (
     <div className="mt-10">
-      {section.kind === 'biodata' ? (
-        <Facts items={items} />
-      ) : section.kind === 'workplan' ? (
-        <Semesters items={items} />
-      ) : (
-        <ItemList items={items} headingLevel="h3" />
-      )}
+      {section.layout === 'facts' && <Facts items={items} />}
+      {section.layout === 'timeline' && <Semesters items={items} />}
+      {section.layout === 'list' && <ItemList items={items} headingLevel="h3" />}
     </div>
   )
 }
 
-export function Section({ section }: { section: PresentationSection }) {
-  const id = sectionAnchor(section)
+export function Section({ section, anchor }: { section: PresentationSection; anchor: string }) {
+  const id = anchor
   return (
     <Scene as="section" id={id} labelledBy={`${id}-title`}>
       <Reveal>

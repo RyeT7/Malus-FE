@@ -1,5 +1,4 @@
-import { outline, outlineTarget } from '../lib/sections'
-import type { PresentationSection, SectionItem, SectionKind } from '../types/api'
+import type { PresentationSection, SectionItem } from '../types/api'
 
 export type ProgrammeEntry = { label: string; slide: number | null }
 
@@ -8,9 +7,9 @@ export type NumberedItem = SectionItem & { number: number; part: number }
 export type Slide =
   | { type: 'title'; label: string }
   | { type: 'programme'; label: string; entries: ProgrammeEntry[] }
-  | { type: 'text'; label: string; kind: SectionKind; title: string; paragraphs: string[]; continued: boolean }
-  | { type: 'facts'; label: string; kind: SectionKind; title: string; items: NumberedItem[]; continued: boolean }
-  | { type: 'items'; label: string; kind: SectionKind; title: string; subtitle?: string; items: NumberedItem[]; continued: boolean }
+  | { type: 'text'; label: string; title: string; paragraphs: string[]; continued: boolean }
+  | { type: 'facts'; label: string; title: string; items: NumberedItem[]; continued: boolean }
+  | { type: 'items'; label: string; title: string; subtitle?: string; items: NumberedItem[]; continued: boolean }
   | { type: 'questions'; label: string }
 
 export const maxItemsPerSlide = 4
@@ -83,10 +82,9 @@ export function chunkItems(items: NumberedItem[]): NumberedItem[][] {
 function sectionSlides(section: PresentationSection): Slide[] {
   const slides: Slide[] = []
   const items = section.items ?? []
-  const base = { kind: section.kind, title: section.title, label: section.title }
+  const base = { title: section.title, label: section.title }
   const paragraphs = paragraphsOf(section.body)
-  const listKind = section.kind !== 'biodata' && section.kind !== 'workplan'
-  const shortIntro = listKind && paragraphs.join('').length <= 220 && items.length > 0
+  const shortIntro = section.layout === 'list' && paragraphs.join('').length <= 220 && items.length > 0
 
   if (paragraphs.length > 0 && !shortIntro) {
     chunkParagraphs(paragraphs).forEach((chunk, i) => {
@@ -98,11 +96,11 @@ function sectionSlides(section: PresentationSection): Slide[] {
   const withIntro = <T extends Slide>(slide: T, i: number): T =>
     i === 0 && intro.length > 0 && slide.type === 'items' ? { ...slide, subtitle: intro.join(' ') } : slide
 
-  if (section.kind === 'biodata') {
+  if (section.layout === 'facts') {
     chunkItems(numberItems(items)).forEach((chunk, i) => {
       slides.push({ type: 'facts', ...base, items: chunk, continued: slides.length > 0 || i > 0 })
     })
-  } else if (section.kind === 'workplan') {
+  } else if (section.layout === 'timeline') {
     const bySemester = new Map<number, SectionItem[]>()
     for (const item of items) {
       const semester = item.semester ?? 0
@@ -131,16 +129,10 @@ export function buildSlides(sections: PresentationSection[]): Slide[] {
   const programme: Slide & { type: 'programme' } = { type: 'programme', label: 'Programme', entries: [] }
   slides.push(programme)
 
-  const firstSlideOf = new Map<SectionKind, number>()
   for (const section of sections) {
-    firstSlideOf.set(section.kind, slides.length)
+    programme.entries.push({ label: section.title, slide: slides.length })
     slides.push(...sectionSlides(section))
   }
-
-  programme.entries = outline.map((item) => {
-    const target = outlineTarget(item, sections)
-    return { label: item.label, slide: target ? (firstSlideOf.get(target.kind) ?? null) : null }
-  })
 
   slides.push({ type: 'questions', label: 'Questions' })
   return slides

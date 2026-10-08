@@ -8,7 +8,6 @@ import type {
   ProblemDetails,
   Question,
   SectionContent,
-  SectionKind,
   SectionAttachment,
   SectionVersion,
   UploadTicket,
@@ -63,6 +62,9 @@ async function request<T>(path: string, { auth = false, ...init }: RequestOption
     throw new ApiError(response.status, message)
   }
 
+  if (response.status === 204) {
+    return undefined as T
+  }
   return (await response.json()) as T
 }
 
@@ -114,6 +116,7 @@ function contentPayload(content: SectionContent) {
   return {
     title: content.title,
     body: content.body,
+    layout: content.layout,
     items: content.items.map((item) => ({
       heading: item.heading,
       detail: item.detail,
@@ -124,12 +127,29 @@ function contentPayload(content: SectionContent) {
   }
 }
 
-export function createSection(kind: SectionKind, content: SectionContent): Promise<AdminSection> {
+export function createSection(content: SectionContent): Promise<AdminSection> {
   return request<AdminSection>('/v1/sections', {
     method: 'POST',
     auth: true,
-    body: JSON.stringify({ kind, ...contentPayload(content) }),
+    body: JSON.stringify(contentPayload(content)),
   })
+}
+
+export function deleteSection(id: string, revision: number): Promise<void> {
+  return request<void>(sectionPath(id), {
+    method: 'DELETE',
+    auth: true,
+    headers: ifMatch(revision),
+  })
+}
+
+export async function reorderSections(ids: string[]): Promise<AdminSection[]> {
+  const list = await request<List<AdminSection>>('/v1/sections/order', {
+    method: 'PUT',
+    auth: true,
+    body: JSON.stringify({ ids }),
+  })
+  return list.items
 }
 
 export function saveDraft(id: string, revision: number, content: SectionContent): Promise<AdminSection> {

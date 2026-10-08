@@ -1,40 +1,44 @@
 import { useCallback, useEffect, useState } from 'react'
-import { listSections } from '../lib/api'
+import { listSections, reorderSections } from '../lib/api'
 import { authEnabled, signIn, signOut } from '../lib/auth'
 import { useSession } from '../lib/useSession'
-import type { AdminSection, SectionKind } from '../types/api'
-import { kindInfo, kinds } from './kinds'
+import type { AdminSection } from '../types/api'
 import { PresentPanel } from './PresentPanel'
 import { QuestionsPanel } from './QuestionsPanel'
 import { SectionEditor } from './SectionEditor'
 import { VersionHistory } from './VersionHistory'
 
-type View = SectionKind | 'questions' | 'present'
+type View = { type: 'section'; id: string } | { type: 'new' } | { type: 'questions' } | { type: 'present' }
 
-function initialView(): View {
-  return window.location.hash === '#present' ? 'present' : kinds[0].kind
+function initialView(): View | null {
+  return window.location.hash === '#present' ? { type: 'present' } : null
 }
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; sections: AdminSection[] }
 
 const linkButton = 'cursor-pointer underline decoration-wash underline-offset-[0.2em] hover:decoration-2'
+const moveButton =
+  'cursor-pointer px-2 py-1 text-sm hover:bg-ink hover:text-paper disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink'
+const navButton = 'block w-full cursor-pointer py-3 text-left hover:underline aria-[current]:font-semibold'
 
-function sectionStatus(section: AdminSection | undefined): string {
-  if (!section) {
-    return 'Not created'
-  }
+function sectionStatus(section: AdminSection): string {
   if (!section.published) {
     return 'Draft only'
   }
   return section.hasUnpublishedChanges ? `Live v${section.published.number}, unpublished changes` : `Live v${section.published.number}`
 }
 
+function sameView(a: View, b: View): boolean {
+  return a.type === b.type && (a.type !== 'section' || (b.type === 'section' && a.id === b.id))
+}
+
 function Editor() {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
-  const [selected, setSelected] = useState<View>(initialView)
+  const [selected, setSelected] = useState<View | null>(initialView)
   const [notice, setNotice] = useState('')
   const [dirty, setDirty] = useState(false)
+  const [moving, setMoving] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -57,15 +61,34 @@ function Editor() {
 
   const saved = useCallback((section: AdminSection, message: string) => {
     setNotice(message)
-    setLoad((prev) =>
-      prev.status === 'ready'
-        ? { status: 'ready', sections: [...prev.sections.filter((s) => s.kind !== section.kind), section] }
-        : prev,
-    )
+    setLoad((prev) => {
+      if (prev.status !== 'ready') {
+        return prev
+      }
+      const exists = prev.sections.some((s) => s.id === section.id)
+      return {
+        status: 'ready',
+        sections: exists ? prev.sections.map((s) => (s.id === section.id ? section : s)) : [...prev.sections, section],
+      }
+    })
+    setSelected({ type: 'section', id: section.id })
   }, [])
 
-  function select(kind: View) {
-    if (kind === selected) {
+  const deleted = useCallback((id: string, message: string) => {
+    setNotice(message)
+    setDirty(false)
+    setSelected(null)
+    setLoad((prev) => (prev.status === 'ready' ? { status: 'ready', sections: prev.sections.filter((s) => s.id !== id) } : prev))
+  }, [])
+
+  const sections = load.status === 'ready' ? load.sections : []
+  const fallback: View = sections.length > 0 ? { type: 'section', id: sections[0].id } : { type: 'new' }
+  const known = selected !== null && (selected.type !== 'section' || sections.some((s) => s.id === selected.id))
+  const current: View = known ? selected : fallback
+  const section = current.type === 'section' ? sections.find((s) => s.id === current.id) : undefined
+
+  function select(view: View) {
+    if (sameView(view, current)) {
       return
     }
     if (dirty && !window.confirm('You have unsaved changes in this section. Leave without saving?')) {
@@ -73,39 +96,94 @@ function Editor() {
     }
     setNotice('')
     setDirty(false)
-    setSelected(kind)
+    setSelected(view)
   }
 
-  const byKind = new Map(load.status === 'ready' ? load.sections.map((s) => [s.kind, s]) : [])
-  const info = selected === 'questions' || selected === 'present' ? null : kindInfo(selected)
-  const section = selected === 'questions' || selected === 'present' ? undefined : byKind.get(selected)
-  const editing = info !== null && load.status === 'ready'
+  async function move(index: number, by: number) {
+    const target = index + by
+    if (target < 0 || target >= sections.length) {
+      return
+    }
+    const order = sections.map((s) => s.id)
+    ;[order[index], order[target]] = [order[target], order[index]]
+    setMoving(true)
+    try {
+      setLoad({ status: 'ready', sections: await reorderSections(order) })
+      setNotice(`Moved "${sections[index].draft.title}" ${by < 0 ? 'up' : 'down'}.`)
+    } catch (err) {
+      setNotice(`Could not reorder: ${err instanceof Error ? err.message : 'Something went wrong.'}`)
+    } finally {
+      setMoving(false)
+    }
+  }
 
   return (
-    <div className="mt-10 flex flex-col md:grid md:grid-cols-[15rem_1fr] md:gap-12">
+    <div className="mt-10 flex flex-col md:grid md:grid-cols-[17rem_1fr] md:gap-12">
       <nav aria-label="Sections" className="mb-10 md:mb-0">
-        <ul className="border-t border-mist">
-          {kinds.map((k) => (
-            <li key={k.kind} className="border-b border-mist">
-              <button
-                type="button"
-                onClick={() => select(k.kind)}
-                aria-current={k.kind === selected ? 'true' : undefined}
-                className="block w-full cursor-pointer py-3 text-left hover:underline aria-[current]:font-semibold"
-              >
-                <span className="block">{k.label}</span>
-                <span className="block text-sm font-normal">{load.status === 'ready' ? sectionStatus(byKind.get(k.kind)) : load.status === 'loading' ? 'Loading…' : 'Not loaded'}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        {load.status === 'loading' && <p className="text-sm">Loading sections…</p>}
+        {load.status === 'error' && (
+          <div role="alert" className="text-sm">
+            <p>Could not load sections: {load.message}</p>
+            <button type="button" onClick={reload} className={`${linkButton} mt-2`}>
+              Try again
+            </button>
+          </div>
+        )}
+        {load.status === 'ready' && (
+          <>
+            <p className="text-sm">The presentation shows published sections in this order.</p>
+            <ol className="mt-3 border-t border-mist">
+              {sections.map((s, i) => (
+                <li key={s.id} className="flex items-center gap-1 border-b border-mist">
+                  <button
+                    type="button"
+                    onClick={() => select({ type: 'section', id: s.id })}
+                    aria-current={current.type === 'section' && current.id === s.id ? 'true' : undefined}
+                    className={`${navButton} min-w-0 flex-1`}
+                  >
+                    <span className="block truncate">{s.draft.title}</span>
+                    <span className="block text-sm font-normal">{sectionStatus(s)}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void move(i, -1)}
+                    disabled={moving || i === 0}
+                    aria-label={`Move ${s.draft.title} up`}
+                    className={moveButton}
+                  >
+                    {'\u2191\uFE0E'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void move(i, 1)}
+                    disabled={moving || i === sections.length - 1}
+                    aria-label={`Move ${s.draft.title} down`}
+                    className={moveButton}
+                  >
+                    {'\u2193\uFE0E'}
+                  </button>
+                </li>
+              ))}
+              <li className="border-b border-mist">
+                <button
+                  type="button"
+                  onClick={() => select({ type: 'new' })}
+                  aria-current={current.type === 'new' ? 'true' : undefined}
+                  className={navButton}
+                >
+                  + New section
+                </button>
+              </li>
+            </ol>
+          </>
+        )}
         <ul className="mt-8 border-t border-mist">
           <li className="border-b border-mist">
             <button
               type="button"
-              onClick={() => select('present')}
-              aria-current={selected === 'present' ? 'true' : undefined}
-              className="block w-full cursor-pointer py-3 text-left hover:underline aria-[current]:font-semibold"
+              onClick={() => select({ type: 'present' })}
+              aria-current={current.type === 'present' ? 'true' : undefined}
+              className={navButton}
             >
               <span className="block">Present</span>
               <span className="block text-sm font-normal">Run the live session and control slides</span>
@@ -114,9 +192,9 @@ function Editor() {
           <li className="border-b border-mist">
             <button
               type="button"
-              onClick={() => select('questions')}
-              aria-current={selected === 'questions' ? 'true' : undefined}
-              className="block w-full cursor-pointer py-3 text-left hover:underline aria-[current]:font-semibold"
+              onClick={() => select({ type: 'questions' })}
+              aria-current={current.type === 'questions' ? 'true' : undefined}
+              className={navButton}
             >
               <span className="block">Questions</span>
               <span className="block text-sm font-normal">Mark audience questions answered</span>
@@ -125,34 +203,25 @@ function Editor() {
         </ul>
       </nav>
 
-      <div className={selected === 'present' ? 'order-first mb-10 min-w-0 md:order-none md:mb-0' : 'min-w-0'}>
+      <div className={current.type === 'present' ? 'order-first mb-10 min-w-0 md:order-none md:mb-0' : 'min-w-0'}>
         <p role="status" aria-live="polite" className="mb-4 min-h-[1lh] text-sm font-semibold">
           {notice}
         </p>
-        {selected === 'present' && <PresentPanel />}
-        {selected === 'questions' && <QuestionsPanel />}
-        {info !== null && load.status === 'loading' && <p>Loading sections…</p>}
-        {info !== null && load.status === 'error' && (
-          <div role="alert">
-            <p>Could not load sections: {load.message}</p>
-            <button type="button" onClick={reload} className={`${linkButton} mt-2`}>
-              Try again
-            </button>
-          </div>
-        )}
-        {editing && (
+        {current.type === 'present' && <PresentPanel />}
+        {current.type === 'questions' && <QuestionsPanel />}
+        {load.status === 'ready' && (current.type === 'new' || section) && (
           <SectionEditor
-            key={`${selected}:${section?.id ?? 'new'}:${section?.revision ?? 0}`}
-            info={info}
+            key={section ? `editor:${section.id}:${section.revision}` : 'editor:new'}
             section={section}
             onSaved={saved}
+            onDeleted={deleted}
             onReload={reload}
             onDirtyChange={setDirty}
           />
         )}
         {section && (
           <VersionHistory
-            key={`${section.id}:${section.revision}`}
+            key={`history:${section.id}:${section.revision}`}
             section={section}
             blocked={dirty ? 'Save or discard your changes above before restoring a version.' : ''}
             onRestored={saved}

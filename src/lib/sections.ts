@@ -1,25 +1,27 @@
 import type { PresentationSection } from '../types/api'
-import type { OutlineItem } from '../types/outline'
 
-export const outline: OutlineItem[] = [
-  { label: 'Biodata', kinds: ['biodata'] },
-  { label: 'Strengths and weaknesses', kinds: ['strengths', 'weaknesses'] },
-  { label: 'Workplan', kinds: ['workplan'] },
-  { label: 'Innovations', kinds: ['innovations'] },
-  { label: 'Proposed changes', kinds: ['proposed_changes'] },
-  { label: 'Why I deserve the title', kinds: ['why_me'] },
-]
+const reserved = new Set(['programme', 'questions', 'question-text', 'question-count', 'question-author', 'question-error'])
 
-export function sectionAnchor(section: PresentationSection): string {
-  return section.kind.replaceAll('_', '-')
+function slug(text: string): string {
+  return text
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
-export function outlineTarget(item: OutlineItem, sections: PresentationSection[]): PresentationSection | undefined {
-  for (const kind of item.kinds) {
-    const section = sections.find((s) => s.kind === kind)
-    if (section) {
-      return section
+export function sectionAnchors(sections: PresentationSection[]): Map<string, string> {
+  const anchors = new Map<string, string>()
+  const used = new Set<string>()
+  for (const section of sections) {
+    const base = slug(section.title) || 'section'
+    let anchor = base
+    for (let n = 2; used.has(anchor) || reserved.has(anchor); n++) {
+      anchor = `${base}-${n}`
     }
+    used.add(anchor)
+    anchors.set(section.id, anchor)
   }
-  return undefined
+  return anchors
 }

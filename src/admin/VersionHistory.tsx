@@ -56,8 +56,8 @@ export function VersionHistory({ section, blocked, onRestored, onConflict }: Pro
   }
 
   return (
-    <section aria-labelledby={`history-${section.kind}`} className="mt-16 border-t border-mist pt-8">
-      <h2 id={`history-${section.kind}`} className="text-[1.75rem]">
+    <section aria-labelledby={`history-${section.id}`} className="mt-16 border-t border-mist pt-8">
+      <h2 id={`history-${section.id}`} className="text-[1.75rem]">
         Version history
       </h2>
       <p className="mt-2 text-sm">Restoring publishes a copy of an older version as a new version. Nothing is deleted.</p>

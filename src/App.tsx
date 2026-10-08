@@ -1,37 +1,115 @@
-const sections = [
-  'Biodata',
-  'Strengths and weaknesses',
-  'Workplan',
-  'Innovations',
-  'Proposed changes',
-  'Why I deserve the title',
-]
+import { AdminSession } from './components/AdminSession'
+import { Programme } from './components/Programme'
+import { Questions } from './components/Questions'
+import { Scene } from './components/Scene'
+import { Section } from './components/Section'
+import { Stage } from './components/Stage'
+import { StageLights } from './components/StageLights'
+import { activeSession, useLive } from './lib/live'
+import { sectionAnchors } from './lib/sections'
+import { usePresentation } from './lib/usePresentation'
+import { useView } from './lib/useView'
+import { SlideMode } from './slides/SlideMode'
+
+function ReadingPage({ onPresent }: { onPresent: (slide?: number) => void }) {
+  const { state, retry } = usePresentation()
+  const sections = state.status === 'ready' ? state.sections : []
+  const session = activeSession(useLive())
+  const anchors = sectionAnchors(sections)
+
+  return (
+    <>
+      <StageLights />
+
+      {session && (
+        <p className="fixed inset-x-0 top-0 z-20 border-b border-mist/20 bg-ink/90 px-4 py-3 text-center backdrop-blur-sm">
+          <a
+            href={`?view=slides&slide=${session.slide + 1}`}
+            onClick={(e) => {
+              e.preventDefault()
+              onPresent(session.slide)
+            }}
+            className="text-paper underline decoration-mist underline-offset-[0.25em] hover:decoration-2"
+          >
+            The presentation is live. Follow along
+          </a>
+        </p>
+      )}
+
+      <div className="relative z-10">
+        <Stage />
+
+        <main>
+          <Scene>
+            <Programme sections={sections} anchors={anchors} />
+
+            {state.status === 'ready' && state.sections.length > 0 && (
+              <p className="mt-10 md:pl-[16rem]">
+                <a
+                  href="?view=slides"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onPresent(0)
+                  }}
+                  className="text-mist hover:text-paper"
+                >
+                  View as slides
+                </a>
+              </p>
+            )}
+
+            {state.status === 'loading' && (
+              <p role="status" className="mt-12 text-mist md:pl-[16rem]">
+                Loading the presentation…
+              </p>
+            )}
+
+            {state.status === 'error' && (
+              <div role="alert" className="mt-12 md:pl-[16rem]">
+                <p>Could not load the presentation: {state.message}</p>
+                <button
+                  type="button"
+                  onClick={retry}
+                  className="mt-4 cursor-pointer bg-paper px-6 py-3 text-ink transition-colors duration-300 hover:bg-mist"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {state.status === 'ready' && state.sections.length === 0 && (
+              <p className="mt-12 text-mist md:pl-[16rem]">Nothing has been published yet.</p>
+            )}
+          </Scene>
+
+          {sections.map((section) => (
+            <Section key={section.id} section={section} anchor={anchors.get(section.id) ?? section.id} />
+          ))}
+        </main>
+
+        <div className="snap-start border-t border-mist/15">
+          <div className="mx-auto max-w-5xl px-5 pt-28 pb-14 sm:px-8 md:pt-36">
+            <Questions />
+            <AdminSession />
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
 
 function App() {
-  return (
-    <main className="mx-auto max-w-184 px-4 pt-[clamp(3rem,12vh,7rem)] pb-16 sm:px-6">
-      <h1 className="text-[clamp(2.5rem,7vw,4.25rem)] tracking-[-0.01em]">
-        Ryuu Stanley Tistogondo
-      </h1>
-      <hr className="my-8 h-0.5 w-16 border-0 bg-wash" />
-      <p className="max-w-136">
-        Who I am, where I stand, and what I plan to do over the next two
-        semesters if given the title.
-      </p>
-      <nav aria-label="Sections">
-        <ol className="mt-16 border-t border-mist">
-          {sections.map((section) => (
-            <li
-              key={section}
-              className="border-b border-mist py-4 font-display text-[1.375rem]"
-            >
-              {section}
-            </li>
-          ))}
-        </ol>
-      </nav>
-    </main>
-  )
+  const { view, present, goTo, exit } = useView()
+
+  if (view.mode === 'slides') {
+    return (
+      <>
+        <StageLights />
+        <SlideMode slide={view.slide} presenting={view.presenting} onSlideChange={goTo} onExit={exit} />
+      </>
+    )
+  }
+  return <ReadingPage onPresent={present} />
 }
 
 export default App

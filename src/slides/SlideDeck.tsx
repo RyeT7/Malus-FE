@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import type { Slide } from './buildSlides'
 import { SlideView } from './SlideView'
 
@@ -7,6 +7,7 @@ type Props = {
   index: number
   onIndexChange: (index: number) => void
   onExit: () => void
+  status?: ReactNode
 }
 
 const swipeThreshold = 60
@@ -18,7 +19,7 @@ function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 }
 
-export function SlideDeck({ slides, index, onIndexChange, onExit }: Props) {
+export function SlideDeck({ slides, index, onIndexChange, onExit, status }: Props) {
   const deck = useRef<HTMLDivElement>(null)
   const swipeStart = useRef<{ x: number; y: number } | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
@@ -155,10 +156,13 @@ export function SlideDeck({ slides, index, onIndexChange, onExit }: Props) {
         </div>
       </div>
 
-      <nav aria-label="Slide controls" className="flex items-center justify-between gap-4 border-t border-mist/10 px-4 py-2 text-sm sm:px-8">
-        <button type="button" onClick={onExit} className={controlButton}>
-          Exit
-        </button>
+      <nav aria-label="Slide controls" className="flex flex-wrap items-center justify-between gap-x-4 border-t border-mist/10 px-4 py-2 text-sm sm:px-8">
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={onExit} className={controlButton}>
+            Exit
+          </button>
+          {status}
+        </div>
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => go(current - 1)} disabled={current === 0} aria-label="Previous slide" className={controlButton}>
             ← Previous

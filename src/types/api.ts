@@ -84,6 +84,30 @@ export type Me = {
   admin: boolean
 }
 
+export type LiveSession = {
+  id: string
+  slideCount: number
+  slide: number
+  version: number
+  active: boolean
+  startedAt: string
+  updatedAt: string
+  endedAt?: string
+}
+
+export type LiveConnection = {
+  kind: 'sse' | 'webpubsub'
+  url: string
+}
+
+export type LiveState = {
+  sessionId: string
+  slide: number
+  slideCount: number
+  version: number
+  active: boolean
+}
+
 export type List<T> = {
   items: T[]
 }

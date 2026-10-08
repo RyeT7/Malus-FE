@@ -3,11 +3,16 @@ import { listSections, reorderSections } from '../lib/api'
 import { authEnabled, signIn, signOut } from '../lib/auth'
 import { useSession } from '../lib/useSession'
 import type { AdminSection } from '../types/api'
+import { PresentPanel } from './PresentPanel'
 import { QuestionsPanel } from './QuestionsPanel'
 import { SectionEditor } from './SectionEditor'
 import { VersionHistory } from './VersionHistory'
 
-type View = { type: 'section'; id: string } | { type: 'new' } | { type: 'questions' }
+type View = { type: 'section'; id: string } | { type: 'new' } | { type: 'questions' } | { type: 'present' }
+
+function initialView(): View | null {
+  return window.location.hash === '#present' ? { type: 'present' } : null
+}
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; sections: AdminSection[] }
 
@@ -30,7 +35,7 @@ function sameView(a: View, b: View): boolean {
 function Editor() {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
-  const [selected, setSelected] = useState<View | null>(null)
+  const [selected, setSelected] = useState<View | null>(initialView)
   const [notice, setNotice] = useState('')
   const [dirty, setDirty] = useState(false)
   const [moving, setMoving] = useState(false)
@@ -176,6 +181,17 @@ function Editor() {
           <li className="border-b border-mist">
             <button
               type="button"
+              onClick={() => select({ type: 'present' })}
+              aria-current={current.type === 'present' ? 'true' : undefined}
+              className={navButton}
+            >
+              <span className="block">Present</span>
+              <span className="block text-sm font-normal">Run the live session and control slides</span>
+            </button>
+          </li>
+          <li className="border-b border-mist">
+            <button
+              type="button"
               onClick={() => select({ type: 'questions' })}
               aria-current={current.type === 'questions' ? 'true' : undefined}
               className={navButton}
@@ -187,10 +203,11 @@ function Editor() {
         </ul>
       </nav>
 
-      <div className="min-w-0">
+      <div className={current.type === 'present' ? 'order-first mb-10 min-w-0 md:order-none md:mb-0' : 'min-w-0'}>
         <p role="status" aria-live="polite" className="mb-4 min-h-[1lh] text-sm font-semibold">
           {notice}
         </p>
+        {current.type === 'present' && <PresentPanel />}
         {current.type === 'questions' && <QuestionsPanel />}
         {load.status === 'ready' && (current.type === 'new' || section) && (
           <SectionEditor

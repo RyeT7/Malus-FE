@@ -5,19 +5,36 @@ import { Scene } from './components/Scene'
 import { Section } from './components/Section'
 import { Stage } from './components/Stage'
 import { StageLights } from './components/StageLights'
+import { activeSession, useLive } from './lib/live'
 import { sectionAnchors } from './lib/sections'
 import { usePresentation } from './lib/usePresentation'
 import { useView } from './lib/useView'
 import { SlideMode } from './slides/SlideMode'
 
-function ReadingPage({ onPresent }: { onPresent: () => void }) {
+function ReadingPage({ onPresent }: { onPresent: (slide?: number) => void }) {
   const { state, retry } = usePresentation()
   const sections = state.status === 'ready' ? state.sections : []
+  const session = activeSession(useLive())
   const anchors = sectionAnchors(sections)
 
   return (
     <>
       <StageLights />
+
+      {session && (
+        <p className="fixed inset-x-0 top-0 z-20 border-b border-mist/20 bg-ink/90 px-4 py-3 text-center backdrop-blur-sm">
+          <a
+            href={`?view=slides&slide=${session.slide + 1}`}
+            onClick={(e) => {
+              e.preventDefault()
+              onPresent(session.slide)
+            }}
+            className="text-paper underline decoration-mist underline-offset-[0.25em] hover:decoration-2"
+          >
+            The presentation is live. Follow along
+          </a>
+        </p>
+      )}
 
       <div className="relative z-10">
         <Stage />
@@ -32,7 +49,7 @@ function ReadingPage({ onPresent }: { onPresent: () => void }) {
                   href="?view=slides"
                   onClick={(e) => {
                     e.preventDefault()
-                    onPresent()
+                    onPresent(0)
                   }}
                   className="text-mist hover:text-paper"
                 >
@@ -88,11 +105,11 @@ function App() {
     return (
       <>
         <StageLights />
-        <SlideMode slide={view.slide} onSlideChange={goTo} onExit={exit} />
+        <SlideMode slide={view.slide} presenting={view.presenting} onSlideChange={goTo} onExit={exit} />
       </>
     )
   }
-  return <ReadingPage onPresent={() => present(0)} />
+  return <ReadingPage onPresent={present} />
 }
 
 export default App

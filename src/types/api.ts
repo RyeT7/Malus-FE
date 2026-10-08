@@ -1,11 +1,4 @@
-export type SectionKind =
-  | 'biodata'
-  | 'strengths'
-  | 'weaknesses'
-  | 'workplan'
-  | 'innovations'
-  | 'proposed_changes'
-  | 'why_me'
+export type SectionLayout = 'list' | 'facts' | 'timeline'
 
 export type SectionSource = {
   label: string
@@ -37,9 +30,10 @@ export type UploadTicket = {
 }
 
 export type PresentationSection = {
-  kind: SectionKind
+  id: string
   title: string
   body: string
+  layout: SectionLayout
   items?: SectionItem[]
   version: number
   publishedAt: string
@@ -48,6 +42,7 @@ export type PresentationSection = {
 export type SectionContent = {
   title: string
   body: string
+  layout: SectionLayout
   items: SectionItem[]
 }
 
@@ -59,7 +54,6 @@ export type SectionVersion = {
 
 export type AdminSection = {
   id: string
-  kind: SectionKind
   draft: SectionContent
   published?: SectionVersion
   hasUnpublishedChanges: boolean

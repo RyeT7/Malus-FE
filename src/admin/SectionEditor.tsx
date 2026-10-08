@@ -1,18 +1,19 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ApiError, createSection, publishSection, saveDraft } from '../lib/api'
+import { ApiError, createSection, deleteSection, publishSection, saveDraft } from '../lib/api'
 import type { AdminSection, SectionContent } from '../types/api'
 import { ItemsEditor } from './ItemsEditor'
-import { publishProblem, type KindInfo } from './kinds'
+import { layouts } from './layouts'
 
 type Props = {
-  info: KindInfo
   section?: AdminSection
   onSaved: (section: AdminSection, message: string) => void
+  onDeleted: (id: string, message: string) => void
   onReload: () => void
   onDirtyChange: (dirty: boolean) => void
 }
 
 const primaryButton = 'cursor-pointer bg-ink px-5 py-2 text-paper hover:underline disabled:cursor-default disabled:opacity-50 disabled:hover:no-underline'
+const linkButton = 'cursor-pointer underline decoration-wash underline-offset-[0.2em] hover:decoration-2 disabled:cursor-default disabled:opacity-50'
 const secondaryButton =
   'cursor-pointer border border-ink px-5 py-2 hover:bg-ink hover:text-paper disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink'
 
@@ -20,6 +21,7 @@ function normalize(content: SectionContent): string {
   return JSON.stringify({
     title: content.title,
     body: content.body,
+    layout: content.layout,
     items: content.items.map((item) => ({
       heading: item.heading,
       detail: item.detail,
@@ -30,23 +32,20 @@ function normalize(content: SectionContent): string {
   })
 }
 
-function emptyContent(info: KindInfo): SectionContent {
-  return { title: info.label, body: '', items: [] }
-}
+const emptyContent: SectionContent = { title: '', body: '', layout: 'list', items: [] }
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 }
 
-export function SectionEditor({ info, section, onSaved, onReload, onDirtyChange }: Props) {
-  const [form, setForm] = useState<SectionContent>(() => (section ? section.draft : emptyContent(info)))
+export function SectionEditor({ section, onSaved, onDeleted, onReload, onDirtyChange }: Props) {
+  const [form, setForm] = useState<SectionContent>(() => (section ? section.draft : emptyContent))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [conflict, setConflict] = useState(false)
 
-  const id = `editor-${info.kind}`
+  const id = `editor-${section?.id ?? 'new'}`
   const dirty = section ? normalize(form) !== normalize(section.draft) : true
-  const problem = section ? publishProblem(info.kind, section.draft) : null
 
   useEffect(() => {
     onDirtyChange(Boolean(section) && dirty)
@@ -59,8 +58,6 @@ export function SectionEditor({ info, section, onSaved, onReload, onDirtyChange 
     publishBlocker = 'Save your changes before publishing.'
   } else if (!section.hasUnpublishedChanges) {
     publishBlocker = 'Nothing new to publish.'
-  } else if (problem) {
-    publishBlocker = `Can't publish yet: ${problem}`
   }
 
   async function run(action: () => Promise<void>) {
@@ -89,7 +86,7 @@ export function SectionEditor({ info, section, onSaved, onReload, onDirtyChange 
       if (section) {
         onSaved(await saveDraft(section.id, section.revision, form), 'Draft saved.')
       } else {
-        onSaved(await createSection(info.kind, form), 'Draft created.')
+        onSaved(await createSection(form), 'Draft created.')
       }
     })
   }
@@ -104,18 +101,31 @@ export function SectionEditor({ info, section, onSaved, onReload, onDirtyChange 
     })
   }
 
+  function remove() {
+    if (!section) {
+      return
+    }
+    const name = section.draft.title
+    if (!window.confirm(`Delete "${name}"? It is removed from the presentation together with its version history. This cannot be undone.`)) {
+      return
+    }
+    void run(async () => {
+      await deleteSection(section.id, section.revision)
+      onDeleted(section.id, `Deleted "${name}".`)
+    })
+  }
+
   return (
     <section aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className="text-[clamp(1.75rem,4vw,2.5rem)]">
-        {info.label}
+        {section ? section.draft.title : 'New section'}
       </h2>
       <p className="mt-2 text-sm">
-        {!section && 'Not created yet.'}
+        {!section && 'Not created yet. New sections are added at the end.'}
         {section && !section.published && 'Draft only, not published yet.'}
         {section?.published && `Live: version ${section.published.number}, published ${formatDate(section.published.publishedAt)}.`}
         {section?.published && section.hasUnpublishedChanges && ' The draft has unpublished changes.'}
       </p>
-      <p className="mt-1 text-sm">Publishing rule: {info.rule}</p>
 
       {conflict && (
         <div role="alert" className="mt-6 border-l-2 border-wash pl-4">
@@ -143,25 +153,43 @@ export function SectionEditor({ info, section, onSaved, onReload, onDirtyChange 
         </div>
         <div>
           <label htmlFor={`${id}-body`} className="block">
-            Body <span className="text-sm">{info.kind === 'why_me' ? '(required to publish)' : '(optional intro)'}</span>
+            Body <span className="text-sm">(optional)</span>
           </label>
           <textarea
             id={`${id}-body`}
             value={form.body}
             maxLength={20000}
-            rows={info.kind === 'why_me' ? 10 : 4}
+            rows={6}
             onChange={(e) => setForm({ ...form, body: e.target.value })}
             className="mt-2 block w-full resize-y border border-ink bg-paper px-3 py-2"
           />
         </div>
+        <fieldset>
+          <legend className="text-[1.375rem] font-display">Layout</legend>
+          <div className="mt-3 space-y-2">
+            {layouts.map((l) => (
+              <label key={l.layout} className="flex cursor-pointer items-baseline gap-3">
+                <input
+                  type="radio"
+                  name={`${id}-layout`}
+                  value={l.layout}
+                  checked={form.layout === l.layout}
+                  onChange={() => setForm({ ...form, layout: l.layout })}
+                />
+                <span>
+                  {l.label} <span className="text-sm">{l.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <fieldset>
           <legend className="text-[1.375rem] font-display">Items</legend>
           <div className="mt-4">
             <ItemsEditor
               idPrefix={id}
               items={form.items}
-              itemLabel={info.itemLabel}
-              withSemester={info.kind === 'workplan'}
+              withSemester={form.layout === 'timeline'}
               onChange={(items) => setForm({ ...form, items })}
             />
           </div>
@@ -187,6 +215,11 @@ export function SectionEditor({ info, section, onSaved, onReload, onDirtyChange 
             Publish
           </button>
           {busy && <span className="text-sm">Working…</span>}
+          {section && (
+            <button type="button" onClick={remove} disabled={busy} className={`${linkButton} ml-auto`}>
+              Delete section
+            </button>
+          )}
         </div>
         {publishBlocker && (
           <p id={`${id}-publish-blocker`} className="text-sm">

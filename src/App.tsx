@@ -5,6 +5,7 @@ import { Scene } from './components/Scene'
 import { Section } from './components/Section'
 import { Stage } from './components/Stage'
 import { StageLights } from './components/StageLights'
+import { sectionAnchors } from './lib/sections'
 import { usePresentation } from './lib/usePresentation'
 import { useView } from './lib/useView'
 import { SlideMode } from './slides/SlideMode'
@@ -12,6 +13,7 @@ import { SlideMode } from './slides/SlideMode'
 function ReadingPage({ onPresent }: { onPresent: () => void }) {
   const { state, retry } = usePresentation()
   const sections = state.status === 'ready' ? state.sections : []
+  const anchors = sectionAnchors(sections)
 
   return (
     <>
@@ -22,7 +24,7 @@ function ReadingPage({ onPresent }: { onPresent: () => void }) {
 
         <main>
           <Scene>
-            <Programme sections={sections} />
+            <Programme sections={sections} anchors={anchors} />
 
             {state.status === 'ready' && state.sections.length > 0 && (
               <p className="mt-10 md:pl-[16rem]">
@@ -64,7 +66,7 @@ function ReadingPage({ onPresent }: { onPresent: () => void }) {
           </Scene>
 
           {sections.map((section) => (
-            <Section key={section.kind} section={section} />
+            <Section key={section.id} section={section} anchor={anchors.get(section.id) ?? section.id} />
           ))}
         </main>
 

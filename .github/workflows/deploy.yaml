@@ -15,7 +15,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: vars.SWA_NAME != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:

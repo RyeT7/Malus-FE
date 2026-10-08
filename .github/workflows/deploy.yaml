@@ -10,16 +10,16 @@ permissions:
   id-token: write
 
 concurrency:
-  group: deploy-production
+  group: deploy-prod
   cancel-in-progress: false
 
 jobs:
   deploy:
-    if: vars.AZURE_CLIENT_ID != ''
+    if: vars.SWA_NAME != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
-      name: production
+      name: prod
       url: ${{ vars.FRONTEND_URL }}
     steps:
       - uses: actions/checkout@v7
@@ -34,18 +34,22 @@ jobs:
       - run: pnpm build
         env:
           VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
+          VITE_ENTRA_CLIENT_ID: ${{ vars.VITE_ENTRA_CLIENT_ID }}
+          VITE_ENTRA_TENANT_ID: ${{ vars.VITE_ENTRA_TENANT_ID }}
+          VITE_ENTRA_API_SCOPE: ${{ vars.VITE_ENTRA_API_SCOPE }}
 
       - uses: azure/login@v3
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - id: swa
+        env:
+          SWA_NAME: ${{ vars.SWA_NAME }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
         run: |
-          token=$(az staticwebapp secrets list \
-            --name "${{ vars.SWA_NAME }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+          token=$(az staticwebapp secrets list --name "$SWA_NAME" --resource-group "$RESOURCE_GROUP" \
             --query properties.apiKey -o tsv)
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"

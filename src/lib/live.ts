@@ -204,7 +204,7 @@ function subscribe(listener: () => void): () => void {
   }
 }
 
-function getSnapshot(): LiveSnapshot {
+export function getSnapshot(): LiveSnapshot {
   return snapshot
 }
 
